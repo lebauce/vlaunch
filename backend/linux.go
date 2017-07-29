@@ -70,3 +70,7 @@ func RunAsRoot(executable string, args ...string) error {
 
 	return errors.New("Failed to find a way to run as root")
 }
+
+func IsAdmin() bool {
+	return os.Geteuid() == 0
+}

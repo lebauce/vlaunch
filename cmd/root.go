@@ -22,17 +22,24 @@ var RootCmd = &cobra.Command{
 	Use: "vlaunch",
 	Run: func(cmd *cobra.Command, args []string) {
 		dataPath := config.GetConfig().GetString("data_path")
-		logWriters := []io.Writer{os.Stdout}
-		if logFile, err := os.Create(path.Join(dataPath, "vlaunch.log")); err == nil {
+		logWriters := []io.Writer{}
+		if logFile, err := os.OpenFile(path.Join(dataPath, "vlaunch.log"), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666); err == nil {
 			logWriters = append(logWriters, logFile)
+			defer logFile.Close()
 		} else if logFile, err := os.Create("/tmp/vlaunch.log"); err == nil {
 			logWriters = append(logWriters, logFile)
+			defer logFile.Close()
 		}
+
+		logWriters = append(logWriters, os.Stdout)
+		logWriters = append(logWriters, os.Stderr)
 
 		multiLogger := io.MultiWriter(logWriters...)
 		log.SetOutput(multiLogger)
 
-		if os.Geteuid() != 0 {
+		if !backend.IsAdmin() {
+			log.Println("Elevating privileges")
+
 			executable, err := os.Executable()
 			if err != nil {
 				log.Panic(fmt.Sprintf("Failed to determine executable: %s", err.Error()))

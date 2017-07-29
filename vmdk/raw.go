@@ -1,8 +1,10 @@
 package vmdk
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -70,44 +72,51 @@ func CreateRawVMDK(location string, deviceName string, partitions bool, relative
 	}
 
 	if partitions {
-		dev, err := os.Open(deviceName)
+		dev, err := backend.OpenDevice(deviceName, os.O_RDONLY)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to open device: %s", err.Error()))
+			return fmt.Errorf("Failed to open device: %s", err.Error())
 		}
 		defer dev.Close()
 
-		if _, err := dev.Seek(512, io.SeekStart); err != nil {
-			return fmt.Errorf("Failed to seek to GPT: %s", err.Error())
+		// For some reason, passing directly the device to gpt.ReadTable
+		// doesn't work on Windows. So we read the beginning and pass it to
+		// gpt.ReadTable.
+		data := make([]byte, 32768)
+		if _, err := dev.Read(data); err != nil {
+			return fmt.Errorf("Failed to read: %s", err.Error())
 		}
 
-		table, err := gpt.ReadTable(dev, blockSize)
+		gptTable := bytes.NewReader(data)
+		gptTable.Seek(512, io.SeekStart)
+
+		table, err := gpt.ReadTable(gptTable, blockSize)
 		if err != nil {
-			panic(fmt.Sprintf("Failed to read GPT table: %s", err.Error()))
+			return fmt.Errorf("Failed to read GPT table: %s", err.Error())
 		}
 
+		offset := table.Partitions[0].FirstLBA
 		headerPath := strings.TrimSuffix(location, path.Ext(location)) + "-pt.vmdk"
 		deviceHeader, err := os.Create(headerPath)
 		if err != nil {
 			return err
 		}
-		defer deviceHeader.Close()
 
-		if _, err := dev.Seek(0, io.SeekStart); err != nil {
+		multiReader := io.MultiReader(bytes.NewReader(data), dev)
+		_, err = io.CopyN(deviceHeader, multiReader, int64(offset*blockSize))
+		deviceHeader.Close()
+		if err != nil {
 			return err
 		}
 
-		offset := table.Partitions[0].FirstLBA
-		if _, err := io.CopyN(deviceHeader, dev, int64(offset*blockSize)); err != nil {
-			return err
-		}
+		log.Printf("Copied %d bytes to %s\n", int64(offset*blockSize), headerPath)
 
-		header := extent{AccessMode: "RW", Size: offset, Type: "FLAT", Path: headerPath}
+		header := extent{AccessMode: "RW", Size: offset, Type: "FLAT", Path: path.Base(headerPath)}
 		vmdk.Type = "partitionedDevice"
 		vmdk.Extents = append(vmdk.Extents, header)
 
 		for i, part := range table.Partitions {
 			if part.IsEmpty() {
-				break
+				continue
 			}
 
 			if part.FirstLBA > offset {
@@ -138,7 +147,7 @@ func CreateRawVMDK(location string, deviceName string, partitions bool, relative
 
 		vmdk.Extents = append(vmdk.Extents, extent{
 			AccessMode: "RW",
-			Size:       deviceSize - offset,
+			Size:       (deviceSize / 512) - offset,
 			Type:       "ZERO",
 		})
 	} else {

@@ -6,6 +6,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/kardianos/osext"
 	"github.com/spf13/viper"
 )
 
@@ -34,8 +35,8 @@ func InitConfig(cfgFiles []string) error {
 
 	dataPath := cfg.GetString("data_path")
 	if dataPath == "" {
-		if executable, err := os.Executable(); err == nil {
-			dataPath = path.Join(path.Dir(executable), ".vlaunch")
+		if executableFolder, err := osext.ExecutableFolder(); err == nil {
+			dataPath = path.Join(executableFolder, ".vlaunch")
 			if err := os.MkdirAll(dataPath, 0755); err != nil {
 				return err
 			}

@@ -9,6 +9,12 @@ import (
 
 var DeviceNotFound = errors.New("Could not find device")
 
+type USBDevice struct {
+	Mountpoint string
+	VolumeName string
+	Device     string
+}
+
 func FindDevice() (string, error) {
 	if device := config.GetConfig().GetString("device"); device != "" {
 		return device, nil

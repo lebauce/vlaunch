@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"log"
 	"path"
 	"sync"
 	"time"
@@ -166,6 +167,11 @@ func (vm *VirtualMachine) Release() error {
 
 func NewVM() (*VirtualMachine, error) {
 	cfg := config.GetConfig()
+	settingsPath := path.Join(cfg.GetString("data_path"))
+
+	if err := vbox.Init(); err != nil {
+		return nil, fmt.Errorf("Failed to initialize VirtualBox API: %s", err.Error())
+	}
 
 	diskLocation := ""
 	diskType := cfg.GetString("disk_type")
@@ -176,7 +182,8 @@ func NewVM() (*VirtualMachine, error) {
 			return nil, err
 		}
 
-		diskLocation = "/tmp/raw.vmdk"
+		log.Printf("Creating raw VMDK for device %s\n", device)
+		diskLocation = path.Join(settingsPath, "raw.vmdk")
 		if err := vmdk.CreateRawVMDK(diskLocation, device, true, backend.RelativeRawVMDK); err != nil {
 			return nil, err
 		}
@@ -192,7 +199,6 @@ func NewVM() (*VirtualMachine, error) {
 		return nil, err
 	}
 
-	settingsPath := path.Join(cfg.GetString("data_path"))
 	machine, err := vbox.CreateMachine(settingsPath, "ufo", cfg.GetString("distro_type"), "")
 	if err != nil {
 		return nil, err
