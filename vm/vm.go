@@ -257,6 +257,8 @@ func NewVM() (*VirtualMachine, error) {
 	}
 
 	machine.SetAccelerate3DEnabled(true)
+	machine.SetDnDMode(vbox.DnDMode_Bidirectional)
+	machine.SetClipboardMode(vbox.ClipboardMode_Bidirectional)
 
 	for name := range cfg.GetStringMap("shared_folders") {
 		sharedFolder := cfg.Sub("shared_folders." + name)
