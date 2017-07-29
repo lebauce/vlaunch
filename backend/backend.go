@@ -2,6 +2,7 @@ package backend
 
 import (
 	"errors"
+	"io"
 	"os"
 
 	"github.com/lebauce/vlaunch/config"
@@ -13,6 +14,13 @@ type USBDevice struct {
 	Mountpoint string
 	VolumeName string
 	Device     string
+}
+
+type DeviceFile interface {
+	io.Reader
+	io.Writer
+	io.Seeker
+	io.Closer
 }
 
 func FindDevice() (string, error) {

@@ -1,4 +1,5 @@
 // +build windows
+
 package backend
 
 /*
@@ -12,7 +13,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -170,13 +170,6 @@ func (w *windowsDevice) Seek(offset int64, whence int) (int64, error) {
 
 func (w *windowsDevice) Close() error {
 	return windows.Close(w.fd)
-}
-
-type DeviceFile interface {
-	io.Reader
-	io.Writer
-	io.Seeker
-	io.Closer
 }
 
 func OpenDevice(device string, mode int) (DeviceFile, error) {

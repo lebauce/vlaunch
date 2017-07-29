@@ -20,6 +20,10 @@ import (
 
 var RelativeRawVMDK = true
 
+func OpenDevice(device string, mode int) (DeviceFile, error) {
+	return os.OpenFile(device, mode, 0)
+}
+
 func GetFreeRam() (uint64, error) {
 	meminfo := &procmeminfo.MemInfo{}
 	if err := meminfo.Update(); err != nil {
