@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"runtime"
 	"sync"
 	"time"
 
@@ -205,9 +206,12 @@ func NewVM() (*VirtualMachine, error) {
 	}
 
 	cpus := cfg.GetInt("cpus")
-	if cpus > 0 {
-		machine.SetCPUCount(uint(cpus))
+	if cpus <= 0 {
+		if cpus = runtime.NumCPU(); cpus > 1 {
+			cpus /= 2
+		}
 	}
+	machine.SetCPUCount(uint(cpus))
 
 	ram := cfg.GetInt("ram")
 	if ram <= 0 {
