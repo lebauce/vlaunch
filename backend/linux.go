@@ -14,9 +14,19 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/guillermo/go.procmeminfo"
 )
 
 var RelativeRawVMDK = true
+
+func GetFreeRam() (uint64, error) {
+	meminfo := &procmeminfo.MemInfo{}
+	if err := meminfo.Update(); err != nil {
+		return 0, err
+	}
+	return meminfo.Available(), nil
+}
 
 func GetDeviceSize(device string) (uint64, error) {
 	content, err := ioutil.ReadFile(fmt.Sprintf("/sys/block/%s/size", path.Base(device)))

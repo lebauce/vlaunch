@@ -211,8 +211,15 @@ func NewVM() (*VirtualMachine, error) {
 
 	ram := cfg.GetInt("ram")
 	if ram <= 0 {
-		ram = 1024
+		if freeRam, err := backend.GetFreeRam(); err == nil {
+			ram = (int(freeRam) * 2 / 3) / 1024 / 1024
+		}
+
+		if minRam := cfg.GetInt("min_ram"); ram < minRam {
+			ram = minRam
+		}
 	}
+	log.Printf("Setting RAM to %d\n", ram)
 	machine.SetMemorySize(uint(ram))
 
 	if err := machine.SetVramSize(32); err != nil {
