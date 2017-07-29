@@ -16,16 +16,25 @@ import (
 
 var controllerName = "IDE"
 
-type VirtualMachine struct {
-	machine    vbox.Machine
-	console    vbox.Console
-	controller vbox.StorageController
-	session    vbox.Session
-	dd         vbox.Medium
-	wg         sync.WaitGroup
+type EventHandler interface {
+	OnGuestPropertyChanged(event vbox.GuestPropertyChangedEvent)
 }
 
-func (vm *VirtualMachine) OnStateChanged(event *vbox.Event) {
+type VirtualMachine struct {
+	machine       vbox.Machine
+	console       vbox.Console
+	controller    vbox.StorageController
+	session       vbox.Session
+	dd            vbox.Medium
+	wg            sync.WaitGroup
+	eventHandlers []EventHandler
+}
+
+func (vm *VirtualMachine) OnStateChanged(event vbox.Event) {
+}
+
+func (vm *VirtualMachine) RegisterEventHandler(handler EventHandler) {
+	vm.eventHandlers = append(vm.eventHandlers, handler)
 }
 
 func (vm *VirtualMachine) Run() error {
@@ -46,6 +55,7 @@ func (vm *VirtualMachine) Run() error {
 		vbox.EventType_OnStateChanged,
 		vbox.EventType_MachineEvent,
 		vbox.EventType_OnSessionStateChanged,
+		vbox.EventType_OnGuestPropertyChanged,
 	}
 	if err := eventSource.RegisterListener(listener, interestingEvents, false); err != nil {
 		return err
@@ -78,7 +88,15 @@ func (vm *VirtualMachine) Run() error {
 
 			switch eventType {
 			case vbox.EventType_OnStateChanged:
-				vm.OnStateChanged(event)
+				vm.OnStateChanged(*event)
+			case vbox.EventType_OnGuestPropertyChanged:
+				guestPropEvent, err := vbox.NewGuestPropertyChangedEvent(event)
+				if err != nil {
+					return err
+				}
+				for _, handler := range vm.eventHandlers {
+					handler.OnGuestPropertyChanged(guestPropEvent)
+				}
 			default:
 			}
 
@@ -166,7 +184,7 @@ func (vm *VirtualMachine) Release() error {
 	return nil
 }
 
-func NewVM() (*VirtualMachine, error) {
+func (vm *VirtualMachine) Create() error {
 	cfg := config.GetConfig()
 	settingsPath := path.Join(cfg.GetString("data_path"))
 
@@ -180,29 +198,29 @@ func NewVM() (*VirtualMachine, error) {
 	case "raw":
 		device, err := backend.FindDevice()
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		log.Printf("Creating raw VMDK for device %s\n", device)
 		diskLocation = path.Join(settingsPath, "raw.vmdk")
 		if err := vmdk.CreateRawVMDK(diskLocation, device, true, backend.RelativeRawVMDK); err != nil {
-			return nil, err
+			return err
 		}
 	case "vdi":
 		diskLocation = cfg.GetString("disk_location")
 	default:
-		return nil, fmt.Errorf("Invalid disk type '%s'", diskType)
+		return fmt.Errorf("Invalid disk type '%s'", diskType)
 	}
 
 	dd, err := vbox.OpenMedium(diskLocation, vbox.DeviceType_HardDisk,
 		vbox.AccessMode_ReadWrite, false)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	machine, err := vbox.CreateMachine(settingsPath, "ufo", cfg.GetString("distro_type"), "")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	cpus := cfg.GetInt("cpus")
@@ -227,12 +245,12 @@ func NewVM() (*VirtualMachine, error) {
 	machine.SetMemorySize(uint(ram))
 
 	if err := machine.SetVramSize(32); err != nil {
-		return nil, err
+		return err
 	}
 
 	biosSettings, err := machine.GetBiosSettings()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	biosSettings.SetACPIEnabled(true)
@@ -241,11 +259,11 @@ func NewVM() (*VirtualMachine, error) {
 
 	adapter, err := machine.GetNetworkAdapter(0)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := adapter.SetAdapterType(vbox.NetworkAdapterType_I82540EM); err != nil {
-		return nil, err
+		return err
 	}
 
 	// TODO: set audio adapter
@@ -266,58 +284,62 @@ func NewVM() (*VirtualMachine, error) {
 		persistent := sharedFolder.GetBool("persistent")
 		automount := sharedFolder.GetBool("automount")
 		if err := machine.CreateSharedFolder(name, path, persistent, automount); err != nil {
-			fmt.Printf("Failed to create shared folder %s: %s", name, err.Error())
+			log.Printf("Failed to create shared folder %s: %s", name, err.Error())
 		}
 	}
 
 	controller, err := machine.AddStorageController(controllerName, vbox.StorageBus_Ide)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err = controller.SetType(vbox.StorageControllerType_Ich6); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := machine.SaveSettings(); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := machine.Register(); err != nil {
-		return nil, err
+		return err
 	}
 
 	session := vbox.Session{}
 	if err := session.Init(); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := session.LockMachine(machine, vbox.LockType_Write); err != nil {
-		return nil, err
+		return err
 	}
 
 	// NOTE: Machine modifications require the mutable instance obtained from
 	smachine, err := session.GetMachine()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := smachine.AttachDevice(controllerName, 0, 0, vbox.DeviceType_HardDisk, dd); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err = smachine.SaveSettings(); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := session.UnlockMachine(); err != nil {
-		return nil, err
+		return err
 	}
 
-	return &VirtualMachine{
-		machine:    machine,
-		controller: controller,
-		session:    session,
-		dd:         dd,
-	}, nil
+	vm.machine = machine
+	vm.controller = controller
+	vm.session = session
+	vm.dd = dd
+
+	return nil
+}
+
+func NewVM() (*VirtualMachine, error) {
+	return &VirtualMachine{}, nil
 }

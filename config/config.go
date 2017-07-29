@@ -17,6 +17,7 @@ func InitConfig(cfgFiles []string) error {
 	cfg.SetConfigType("yaml")
 	cfg.SetDefault("distro_type", "Linux_64")
 	cfg.SetDefault("disk_type", "raw")
+	cfg.SetDefault("gui", true)
 
 	for _, path := range cfgFiles {
 		configFile, err := os.Open(path)
