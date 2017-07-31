@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lebauce/vlaunch/backend"
 	"github.com/rekby/gpt"
+	"github.com/rekby/mbr"
 )
 
 var blockSize uint64 = 512
@@ -53,6 +54,39 @@ type extent struct {
 	Offset     uint64
 }
 
+type partition struct {
+	FirstLBA uint64
+	LastLBA  uint64
+}
+
+func readPartitions(r io.ReadSeeker) ([]partition, error) {
+	var parts []partition
+
+	r.Seek(512, io.SeekStart)
+	table, err := gpt.ReadTable(r, blockSize)
+	if err == nil {
+		for _, part := range table.Partitions {
+			if !part.IsEmpty() {
+				parts = append(parts, partition{FirstLBA: part.FirstLBA, LastLBA: part.LastLBA})
+			}
+		}
+		return parts, nil
+	}
+
+	r.Seek(0, io.SeekStart)
+	mbr, err := mbr.Read(r)
+	if err != nil {
+		return nil, err
+	}
+	for _, part := range mbr.GetAllPartitions() {
+		if !part.IsEmpty() {
+			parts = append(parts, partition{FirstLBA: uint64(part.GetLBAStart()), LastLBA: uint64(part.GetLBALast())})
+		}
+	}
+
+	return parts, nil
+}
+
 func CreateRawVMDK(location string, deviceName string, partitions bool, relative bool) error {
 	deviceSize, err := backend.GetDeviceSize(deviceName)
 	if err != nil {
@@ -86,15 +120,14 @@ func CreateRawVMDK(location string, deviceName string, partitions bool, relative
 			return fmt.Errorf("Failed to read: %s", err.Error())
 		}
 
-		gptTable := bytes.NewReader(data)
-		gptTable.Seek(512, io.SeekStart)
+		firstBlocks := bytes.NewReader(data)
 
-		table, err := gpt.ReadTable(gptTable, blockSize)
+		partitions, err := readPartitions(firstBlocks)
 		if err != nil {
-			return fmt.Errorf("Failed to read GPT table: %s", err.Error())
+			return fmt.Errorf("Failed to read GPT or MBR table: %s", err.Error())
 		}
 
-		offset := table.Partitions[0].FirstLBA
+		offset := partitions[0].FirstLBA
 		headerPath := strings.TrimSuffix(location, path.Ext(location)) + "-pt.vmdk"
 		deviceHeader, err := os.Create(headerPath)
 		if err != nil {
@@ -114,11 +147,7 @@ func CreateRawVMDK(location string, deviceName string, partitions bool, relative
 		vmdk.Type = "partitionedDevice"
 		vmdk.Extents = append(vmdk.Extents, header)
 
-		for i, part := range table.Partitions {
-			if part.IsEmpty() {
-				continue
-			}
-
+		for i, part := range partitions {
 			if part.FirstLBA > offset {
 				vmdk.Extents = append(vmdk.Extents, extent{
 					AccessMode: "RW",
