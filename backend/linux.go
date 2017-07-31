@@ -39,7 +39,7 @@ func GetDeviceSize(device string) (uint64, error) {
 	}
 
 	size, err := strconv.Atoi(strings.TrimSpace(string(content)))
-	return uint64(size), err
+	return uint64(size) * 512, err
 }
 
 func FindDeviceByUUID(uuid string) (string, error) {
