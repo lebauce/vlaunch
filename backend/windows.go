@@ -23,6 +23,7 @@ import (
 )
 
 var RelativeRawVMDK = false
+var SupportPassiveListener = false
 
 type Win32_LogicalDisk struct {
 	DriveType  uint32

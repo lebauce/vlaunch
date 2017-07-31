@@ -19,6 +19,7 @@ import (
 )
 
 var RelativeRawVMDK = true
+var SupportPassiveListener = true
 
 func OpenDevice(device string, mode int) (DeviceFile, error) {
 	return os.OpenFile(device, mode, 0)

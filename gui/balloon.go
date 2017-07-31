@@ -5,8 +5,6 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/lebauce/vbox"
-
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -23,12 +21,7 @@ func (b *Balloon) Show() {
 	b.widget.Show()
 }
 
-func (b *Balloon) OnGuestPropertyChanged(event vbox.GuestPropertyChangedEvent) {
-	name, _ := event.GetName()
-	value, _ := event.GetValue()
-	/*
-		flags, err := event.GetFlags()
-	*/
+func (b *Balloon) OnGuestPropertyChanged(name, value string, timestamp int64, flags string) {
 	log.Printf("OnGuestPropertyChanged %s => %s\n", name, value)
 	switch name {
 	case "/UFO/Boot/Progress":

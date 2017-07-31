@@ -17,7 +17,7 @@ import (
 var controllerName = "IDE"
 
 type EventHandler interface {
-	OnGuestPropertyChanged(event vbox.GuestPropertyChangedEvent)
+	OnGuestPropertyChanged(name, value string, timestamp int64, flags string)
 }
 
 type VirtualMachine struct {
@@ -37,7 +37,9 @@ func (vm *VirtualMachine) RegisterEventHandler(handler EventHandler) {
 	vm.eventHandlers = append(vm.eventHandlers, handler)
 }
 
-func (vm *VirtualMachine) Run() error {
+func (vm *VirtualMachine) passiveListenerLoop() error {
+	log.Println("Using passive listener loop")
+
 	eventSource, err := vm.console.GetEventSource()
 	if err != nil {
 		return err
@@ -62,60 +64,131 @@ func (vm *VirtualMachine) Run() error {
 	}
 	defer eventSource.UnregisterListener(listener)
 
-	var wg sync.WaitGroup
-	mainLoop := func() error {
-		defer wg.Done()
-
-		for {
-			event, err := eventSource.GetEvent(listener, 250)
-			if err != nil {
-				return err
-			}
-
-			if event == nil {
-				continue
-			}
-
-			eventType, err := event.GetType()
-			if err != nil {
-				return err
-			}
-
-			state, err := vm.machine.GetState()
-			if err != nil {
-				return err
-			}
-
-			switch eventType {
-			case vbox.EventType_OnStateChanged:
-				vm.OnStateChanged(*event)
-			case vbox.EventType_OnGuestPropertyChanged:
-				guestPropEvent, err := vbox.NewGuestPropertyChangedEvent(event)
-				if err != nil {
-					return err
-				}
-				for _, handler := range vm.eventHandlers {
-					handler.OnGuestPropertyChanged(guestPropEvent)
-				}
-			default:
-			}
-
-			if eventType == vbox.EventType_OnStateChanged && state == vbox.MachineState_PoweredOff {
-				return nil
-			}
-
-			err = eventSource.EventProcessed(listener, *event)
-			if err != nil {
-				return err
-			}
-
-			event.Release()
+	for {
+		event, err := eventSource.GetEvent(listener, 250)
+		if err != nil {
+			return err
 		}
+
+		if event == nil {
+			continue
+		}
+
+		eventType, err := event.GetType()
+		if err != nil {
+			return err
+		}
+
+		state, err := vm.machine.GetState()
+		if err != nil {
+			return err
+		}
+
+		switch eventType {
+		case vbox.EventType_OnStateChanged:
+			vm.OnStateChanged(*event)
+		case vbox.EventType_OnGuestPropertyChanged:
+			guestPropEvent, err := vbox.NewGuestPropertyChangedEvent(event)
+			if err != nil {
+				return err
+			}
+			for _, handler := range vm.eventHandlers {
+				name, _ := guestPropEvent.GetName()
+				value, _ := guestPropEvent.GetValue()
+				flags, _ := guestPropEvent.GetFlags()
+
+				handler.OnGuestPropertyChanged(name, value, time.Now().UnixNano(), flags)
+			}
+		default:
+		}
+
+		if eventType == vbox.EventType_OnStateChanged && state == vbox.MachineState_PoweredOff {
+			return nil
+		}
+
+		err = eventSource.EventProcessed(listener, *event)
+		if err != nil {
+			return err
+		}
+
+		event.Release()
 	}
+}
+
+func (vm *VirtualMachine) pollingLoop() error {
+	log.Println("Using polling loop")
+
+	getPropertyMap := func() (map[string]vbox.GuestProperty, error) {
+		properties, err := vm.machine.EnumerateGuestProperties("")
+		if err != nil {
+			return nil, err
+		}
+
+		m := make(map[string]vbox.GuestProperty)
+		for _, prop := range properties {
+			m[prop.Name] = prop
+		}
+		return m, nil
+	}
+
+	previousState, err := vm.machine.GetState()
+	if err != nil {
+		return err
+	}
+
+	previousProperties, err := getPropertyMap()
+	if err != nil {
+		return err
+	}
+
+	for {
+		state, err := vm.machine.GetState()
+		if err != nil || (state == vbox.MachineState_PoweredOff && state != previousState) {
+			return nil
+		}
+		previousState = state
+
+		properties, err := getPropertyMap()
+		if err != nil {
+			return err
+		}
+
+		for name, prop := range properties {
+			if previousProperty, ok := previousProperties[name]; !ok || previousProperty.Value != prop.Value {
+				for _, handler := range vm.eventHandlers {
+					handler.OnGuestPropertyChanged(prop.Name, prop.Value, prop.Timestamp, prop.Flags)
+				}
+			}
+		}
+
+		for name, prop := range previousProperties {
+			if _, ok := properties[name]; !ok {
+				for _, handler := range vm.eventHandlers {
+					handler.OnGuestPropertyChanged(prop.Name, "", 0, "")
+				}
+			}
+		}
+
+		time.Sleep(250 * time.Millisecond)
+
+		previousProperties = properties
+	}
+}
+
+func (vm *VirtualMachine) Run() (err error) {
+	var wg sync.WaitGroup
 
 	wg.Add(1)
 	go func() {
-		err = mainLoop()
+		defer wg.Done()
+
+		if backend.SupportPassiveListener {
+			err = vm.passiveListenerLoop()
+		} else {
+			err = vm.pollingLoop()
+		}
+
+		log.Println("Exited main loop")
 	}()
 
 	wg.Wait()
@@ -189,7 +262,7 @@ func (vm *VirtualMachine) Create() error {
 	settingsPath := path.Join(cfg.GetString("data_path"))
 
 	if err := vbox.Init(); err != nil {
-		return nil, fmt.Errorf("Failed to initialize VirtualBox API: %s", err.Error())
+		return fmt.Errorf("Failed to initialize VirtualBox API: %s", err.Error())
 	}
 
 	diskLocation := ""
