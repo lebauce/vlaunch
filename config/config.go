@@ -18,6 +18,7 @@ func InitConfig(cfgFiles []string) error {
 	cfg.SetDefault("distro_type", "Linux_64")
 	cfg.SetDefault("disk_type", "raw")
 	cfg.SetDefault("gui", true)
+	cfg.SetDefault("menubar", false)
 
 	for _, path := range cfgFiles {
 		configFile, err := os.Open(path)

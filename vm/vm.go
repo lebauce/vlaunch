@@ -341,7 +341,30 @@ func (vm *VirtualMachine) Create() error {
 
 	// TODO: set audio adapter
 
-	machine.SetExtraData("GUI/MaxGuestResolution", "any")
+	vbox.SetExtraData("GUI/MaxGuestResolution", "any")
+	vbox.SetExtraData("GUI/MaxGuestResolution", "any")
+
+	vbox.SetExtraData("GUI/Input/AutoCapture", "true")
+	vbox.SetExtraData("GUI/TrayIcon/Enabled", "false")
+	vbox.SetExtraData("GUI/UpdateCheckCount", "2")
+	vbox.SetExtraData("GUI/UpdateDate", "never")
+	vbox.SetExtraData("GUI/RegistrationData", "triesLeft=0")
+	vbox.SetExtraData("GUI/SUNOnlineData", "0")
+	vbox.SetExtraData("GUI/SuppressMessages", ",remindAboutAutoCapture,confirmInputCapture,"+
+		"remindAboutMouseIntegrationOn,remindAboutMouseIntegrationOff,"+
+		"remindAboutInaccessibleMedia,remindAboutWrongColorDepth,confirmGoingFullscreen,"+
+		"showRuntimeError.warning.HostAudioNotResponding,"+
+		"showRuntimeError.warning.3DSupportIncompatibleAdditions")
+
+	if cfg.GetBool("menubar") == false {
+		vbox.SetExtraData("GUI/Customizations", "noMenuBar")
+		vbox.SetExtraData("GUI/ShowMiniToolBar", "no")
+	}
+
+	machine.SetExtraData("GUI/SaveMountedAtRuntime", "false")
+	machine.SetExtraData("GUI/Seamless", "off")
+	machine.SetExtraData("GUI/LastCloseAction", "shutdown")
+	machine.SetExtraData("GUI/AutoresizeGuest", "on")
 
 	if hostKey := cfg.GetString("host_key"); hostKey != "" {
 		machine.SetExtraData("GUI/Input/HostKey", hostKey)
