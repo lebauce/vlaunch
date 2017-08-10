@@ -1,0 +1,18 @@
+language: go
+
+dist: trusty
+sudo: required
+
+go: 1.8.x
+
+env: DESKTOP=true ANDROID=false QT_PKG_CONFIG=true PKG_CONFIG_PATH=/opt/qt58/lib/pkgconfig QT_DOC_DIR=/opt/qt58/doc QT_MISC_DIR=/opt/qt58 QT_MXE=true QT_MXE_STATIC=true QT_MXE_ARCH=386
+
+install:
+  - go get -v github.com/kardianos/govendor
+  - go get -v github.com/therecipe/qt/cmd/...
+  - ${GOPATH}/bin/govendor sync
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then travis_wait 30 $GOPATH/src/github.com/therecipe/qt/internal/ci/linux.sh; fi
+
+script:
+  - if [[ "$DESKTOP" == "true" ]]; then $GOPATH/bin/qtsetup full desktop; fi
+  - if [[ "$QT_MXE" == "true" ]]; then $GOPATH/bin/qtsetup full windows; fi
