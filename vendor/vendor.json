@@ -1,0 +1,92 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "rtnyFDJrhm3B7uQlgHE7c9dmXLo=",
+			"path": "github.com/StackExchange/wmi",
+			"revision": "ea383cf3ba6ec950874b8486cd72356d007c768f",
+			"revisionTime": "2017-04-10T19:29:09Z"
+		},
+		{
+			"checksumSHA1": "THBFSK132njkkKAyDzmQMfXk99Y=",
+			"path": "github.com/google/uuid",
+			"revision": "1c6adf5cd133db09196c44ffae1f77ebf4da64aa",
+			"revisionTime": "2017-07-10T14:57:55Z"
+		},
+		{
+			"checksumSHA1": "ft4dQQtL+vLbiH/4safCNviRPAI=",
+			"path": "github.com/guillermo/go.procmeminfo",
+			"revision": "be4355a9fb0e5340ebee5b05aafe85948eaccd1b",
+			"revisionTime": "2013-11-27T22:46:36Z"
+		},
+		{
+			"checksumSHA1": "gEjGS03N1eysvpQ+FCHTxPcbxXc=",
+			"path": "github.com/kardianos/osext",
+			"revision": "ae77be60afb1dcacde03767a8c37337fad28ac14",
+			"revisionTime": "2017-05-10T13:15:34Z"
+		},
+		{
+			"checksumSHA1": "fFpHnAtj13cKv8tN8mNTOHNkpd0=",
+			"path": "github.com/lebauce/vbox",
+			"revision": "53b8116a2fdb23f5667d6f40428cf0bf040b0fc5",
+			"revisionTime": "2017-08-01T08:09:20Z",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "vwKri6+Ls7Xv9pqo0gM9vTtbDn8=",
+			"path": "github.com/pwnall/vbox",
+			"revision": "69081098e7cb2346b3edb8f86d5d872099a8020b",
+			"revisionTime": "2015-06-05T22:43:52Z"
+		},
+		{
+			"checksumSHA1": "VWwxxFRPZ3KnbifwcWazI+Hpw80=",
+			"path": "github.com/rekby/gpt",
+			"revision": "f2cbeebca98b6b541e4c441208a81b4c12b17925",
+			"revisionTime": "2015-11-12T13:56:09Z"
+		},
+		{
+			"checksumSHA1": "wCrOVfHQ2rAig3zClPCTrM1UUP4=",
+			"path": "github.com/rekby/mbr",
+			"revision": "8c28b6465703c4dde586a09aeca764485f76b511",
+			"revisionTime": "2015-12-16T10:13:07Z"
+		},
+		{
+			"checksumSHA1": "nctuSQIkatk44tNNEWwJOyoP8KE=",
+			"path": "github.com/spf13/cobra",
+			"revision": "c46add8a652801b61513ad36c56759f302fbb028",
+			"revisionTime": "2017-07-10T19:27:14Z"
+		},
+		{
+			"checksumSHA1": "KgO3wjkSOm6H7cqTrBCzLyvj6+o=",
+			"path": "github.com/spf13/viper",
+			"revision": "c1de95864d73a5465492829d7cb2dd422b19ac96",
+			"revisionTime": "2017-06-19T10:35:39Z"
+		},
+		{
+			"checksumSHA1": "LQgEntf+4lwEiXNUkicXSAp/zwk=",
+			"path": "github.com/therecipe/qt/core",
+			"revision": "846da6efa0ad6d42174704a15d502c12b98f05d1",
+			"revisionTime": "2017-07-17T22:35:33Z"
+		},
+		{
+			"checksumSHA1": "lGXrKsipKbTyBe63+zFd186poxY=",
+			"path": "github.com/therecipe/qt/gui",
+			"revision": "846da6efa0ad6d42174704a15d502c12b98f05d1",
+			"revisionTime": "2017-07-17T22:35:33Z"
+		},
+		{
+			"checksumSHA1": "gZgSDzFs4FHeQQl4HHyTFUjb2OA=",
+			"path": "github.com/therecipe/qt/widgets",
+			"revision": "846da6efa0ad6d42174704a15d502c12b98f05d1",
+			"revisionTime": "2017-07-17T22:35:33Z"
+		},
+		{
+			"checksumSHA1": "Pki0iA65Dtsjh4gtabPkp/lOa2I=",
+			"path": "golang.org/x/sys/windows",
+			"revision": "4cd6d1a821c7175768725b55ca82f14683a29ea4",
+			"revisionTime": "2017-07-14T13:21:52Z"
+		}
+	],
+	"rootPath": "github.com/lebauce/vlaunch"
+}
